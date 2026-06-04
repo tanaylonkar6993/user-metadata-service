@@ -1,0 +1,120 @@
+version: "3.9"
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  sre-net:
+    driver: bridge
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  postgres-data:
+  artifacts-data:
+  prometheus-data:
+
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       userdb
+      POSTGRES_USER:     sre
+      POSTGRES_PASSWORD: sre_secret
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks: [sre-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sre -d userdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── User Metadata Service ───────────────────────────────────────────────────
+  user-metadata-service:
+    build:
+      context: ./user-metadata-service
+      dockerfile: Dockerfile
+    container_name: user-metadata-service
+    restart: unless-stopped
+    environment:
+      DB_URL:    jdbc:postgresql://postgres:5432/userdb
+      DB_USER:   sre
+      DB_PASS:   sre_secret
+      DB_DRIVER: org.postgresql.Driver
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080"
+    networks: [sre-net]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+
+  # ── Deployment Portal ───────────────────────────────────────────────────────
+  deployment-portal:
+    build:
+      context: ./deployment-portal
+      dockerfile: Dockerfile
+    container_name: deployment-portal
+    restart: unless-stopped
+    environment:
+      ARTIFACTS_DIR: /app/generated-artifacts
+    volumes:
+      - artifacts-data:/app/generated-artifacts
+    ports:
+      - "8081:8081"
+    networks: [sre-net]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/api/services/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+
+  # ── Prometheus ──────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    networks: [sre-net]
+    depends_on:
+      - user-metadata-service
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER:     admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP:     "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks: [sre-net]
+    depends_on:
+      - prometheus

@@ -1,0 +1,48 @@
+# ── Java / Maven ──────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+.m2/
+
+# ── IDE ───────────────────────────────────────────────────────
+.idea/
+*.iml
+.eclipse/
+.settings/
+.project
+.classpath
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Terraform ─────────────────────────────────────────────────
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+terraform.tfplan
+crash.log
+
+# ── Docker ────────────────────────────────────────────────────
+.dockerignore
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Generated artifacts (written by deployment-portal) ────────
+generated-artifacts/
+
+# ── Secrets / env ─────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*.key
+kubeconfig
