@@ -61,27 +61,7 @@ services:
       start_period: 45s
       retries: 3
 
-  # ── Deployment Portal ───────────────────────────────────────────────────────
-  deployment-portal:
-    build:
-      context: ./deployment-portal
-      dockerfile: Dockerfile
-    container_name: deployment-portal
-    restart: unless-stopped
-    environment:
-      ARTIFACTS_DIR: /app/generated-artifacts
-    volumes:
-      - artifacts-data:/app/generated-artifacts
-    ports:
-      - "8081:8081"
-    networks: [sre-net]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8081/api/services/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      start_period: 45s
-      retries: 3
-
+  
   # ── Prometheus ──────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.50.1

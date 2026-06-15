@@ -1,6 +1,8 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 FROM maven:3.9.6-eclipse-temurin-17 AS builder
 
+#FROM maven:3.9.6-amazoncorretto-17 AS builder
+
 WORKDIR /build
 COPY pom.xml .
 # Download deps first (layer-cache friendly)
@@ -11,6 +13,7 @@ RUN mvn package -DskipTests -q
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM eclipse-temurin:17-jre-jammy
+#FROM amazoncorretto:17-al2-jdk
 
 # Non-root user for security
 RUN groupadd --system appgroup && useradd --system --gid appgroup appuser

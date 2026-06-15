@@ -210,3 +210,6 @@ Checkout -> Test -> Build JAR -> Docker Build -> Push to AWS ECR
 ```
 
 Images are tagged with the git commit SHA and build number (e.g. `a1b2c3d-12`) for full traceability.
+
+
+ 
